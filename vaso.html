@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vasopressor · Dosisrechner</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e1117;
+  --surface: #161b26;
+  --surface2: #1e2535;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #e8eaf0;
+  --text2: #8a9bb8;
+  --text3: #4f5f7a;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --accent: #4e9fff;
+  --accent-bg: rgba(78,159,255,0.10);
+  --green: #3ecf8e;
+  --green-bg: rgba(62,207,142,0.12);
+  --yellow: #f5c842;
+  --yellow-bg: rgba(245,200,66,0.12);
+  --orange: #f5823a;
+  --orange-bg: rgba(245,130,58,0.12);
+  --red: #f25f5c;
+  --red-bg: rgba(242,95,92,0.12);
+  --red2: #ff4040;
+  --red2-bg: rgba(180,40,40,0.18);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+header {
+  background: rgba(14,17,23,0.97);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 2rem;
+  height: 54px;
+  display: flex; align-items: center; gap: 1rem;
+  position: sticky; top: 0; z-index: 100;
+}
+.logo { font-family: var(--mono); font-size: 15px; font-weight: 500; color: var(--text); letter-spacing: .04em; }
+.logo span { color: var(--accent); }
+.header-sub { font-size: 12px; color: rgba(232,234,240,0.38); }
+
+.tool-nav {
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 1.5rem; height: 38px;
+  background: rgba(14,17,23,0.97);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.tool-nav::-webkit-scrollbar { display: none; }
+.nav-item {
+  display: flex; align-items: center; gap: 5px;
+  padding: 4px 12px; border-radius: 6px;
+  font-size: 12px; font-weight: 500;
+  color: rgba(232,234,240,0.45);
+  text-decoration: none; white-space: nowrap;
+  transition: all .15s; letter-spacing: .02em;
+}
+.nav-item:hover { color: rgba(232,234,240,0.85); background: rgba(255,255,255,0.06); }
+.nav-item.active { color: #e8eaf0; background: rgba(255,255,255,0.09); }
+
+/* ── PAGE ── */
+.page {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.card-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.card-title { font-size: 13px; font-weight: 500; color: var(--text); flex: 1; }
+.card-sub { font-size: 11px; color: var(--text3); font-family: var(--mono); }
+.card-body { padding: 16px; }
+
+/* ── INPUT GRID ── */
+.input-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--mono);
+  letter-spacing: .04em;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+.field input, .field select {
+  width: 100%;
+  background: var(--surface2);
+  border: 1.5px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 16px;
+  padding: 10px 12px;
+  outline: none;
+  transition: border-color .15s;
+  -moz-appearance: textfield;
+}
+.field input::-webkit-outer-spin-button,
+.field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.field select { font-size: 14px; cursor: pointer; }
+.field-unit {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 4px;
+  font-family: var(--mono);
+}
+
+/* concentration presets */
+.presets {
+  display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.preset {
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text2); cursor: pointer;
+  transition: all .15s; user-select: none;
+}
+.preset:hover { border-color: rgba(255,255,255,0.28); color: var(--text); }
+.preset.active { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
+.presets-label { font-size: 11px; color: var(--text3); font-family: var(--mono); letter-spacing: .04em; text-transform: uppercase; margin-bottom: 6px; }
+
+/* ── RESULT ── */
+.result-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.result-box {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  padding: 14px 16px;
+  transition: border-color .2s;
+}
+.result-box.primary { border-color: var(--accent); background: var(--accent-bg); }
+.rb-label {
+  font-family: var(--mono); font-size: 10px;
+  letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 4px;
+}
+.result-box.primary .rb-label { color: rgba(78,159,255,0.7); }
+.rb-value {
+  font-family: var(--mono); font-size: 28px; font-weight: 500;
+  color: var(--text); line-height: 1;
+}
+.result-box.primary .rb-value { color: var(--accent); }
+.rb-unit { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.result-box.primary .rb-unit { color: rgba(78,159,255,0.6); }
+
+/* ── SOFA BAND ── */
+.sofa-band {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 14px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--surface2);
+  font-size: 13px; color: var(--text2);
+  transition: all .2s;
+}
+.sofa-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--text3); flex-shrink: 0; transition: background .2s;
+}
+.sofa-text { flex: 1; }
+.sofa-score {
+  font-family: var(--mono); font-size: 12px; font-weight: 500;
+  padding: 3px 10px; border-radius: 20px;
+  background: rgba(255,255,255,0.06); color: var(--text3);
+  transition: all .2s;
+}
+
+/* ── REFERENCE TABLE ── */
+.ref-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; margin-top: 4px;
+}
+.ref-table th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text3);
+  padding: 6px 10px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.ref-table td {
+  padding: 6px 10px; color: var(--text2);
+  border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 12px;
+}
+.ref-table tr:last-child td { border-bottom: none; }
+.ref-table tr.highlight td { color: var(--text); }
+.ref-table .dose-col { color: var(--text); font-weight: 500; }
+.ref-table .sofa-col { font-size: 11px; }
+
+/* color classes for SOFA bands */
+.c-green  { background: var(--green-bg)  !important; border-color: var(--green)  !important; }
+.c-yellow { background: var(--yellow-bg) !important; border-color: var(--yellow) !important; }
+.c-orange { background: var(--orange-bg) !important; border-color: var(--orange) !important; }
+.c-red    { background: var(--red-bg)    !important; border-color: var(--red)    !important; }
+.c-red2   { background: var(--red2-bg)   !important; border-color: var(--red2)   !important; }
+
+.note {
+  border-radius: var(--radius-sm); padding: 9px 13px;
+  font-size: 12px; line-height: 1.6; margin-top: 10px;
+  background: var(--accent-bg); border: 1px solid rgba(78,159,255,0.2); color: #7eb8ff;
+}
+
+@media (max-width: 560px) {
+  .input-grid { grid-template-columns: 1fr; }
+  .result-grid { grid-template-columns: 1fr; }
+  .rb-value { font-size: 22px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Vaso<span>·</span>Rechner</div>
+  <div class="header-sub">Vasopressor-Dosiskonverter · Noradrenalin · Adrenalin · Dopamin</div>
+</header>
+<nav class="tool-nav">
+  <a href="index.html" class="nav-item">⌂ Übersicht</a>
+  <a href="mcast.html" class="nav-item">mCAST</a>
+  <a href="hypona.html" class="nav-item">HypoNa</a>
+  <a href="news2.html" class="nav-item">NEWS2</a>
+  <a href="sofa.html" class="nav-item">SOFA</a>
+  <a href="lae.html" class="nav-item">LAE</a>
+  <a href="vaso.html" class="nav-item active">Vasopressor</a>
+</nav>
+
+<div class="page">
+
+  <!-- INPUTS -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Patientendaten &amp; Perfusor</span>
+    </div>
+    <div class="card-body">
+      <div class="input-grid">
+        <div class="field">
+          <label>Körpergewicht</label>
+          <input type="number" id="weight" placeholder="75" min="20" max="250" step="0.5" oninput="calc()">
+          <div class="field-unit">kg</div>
+        </div>
+        <div class="field">
+          <label>Laufrate</label>
+          <input type="number" id="rate" placeholder="5.0" min="0" max="999" step="0.1" oninput="calc()">
+          <div class="field-unit">ml/h</div>
+        </div>
+      </div>
+
+      <div class="presets-label">Standardkonzentrationen</div>
+      <div class="presets" id="presets-area"></div>
+
+      <div class="input-grid" style="margin-bottom:0">
+        <div class="field">
+          <label>Wirkstoff (mg) im Perfusor</label>
+          <input type="number" id="conc-mg" placeholder="5" min="0.1" max="500" step="0.1" oninput="onConcChange()">
+          <div class="field-unit">mg</div>
+        </div>
+        <div class="field">
+          <label>Gesamtvolumen Perfusor</label>
+          <input type="number" id="conc-vol" placeholder="50" min="1" max="500" step="1" oninput="onConcChange()">
+          <div class="field-unit">ml</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DRUG SELECTOR -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Wirkstoff</span>
+    </div>
+    <div class="card-body" style="padding:12px 16px">
+      <div class="presets" id="drug-area"></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Ergebnis</span>
+      <span class="card-sub" id="res-conc-label">–</span>
+    </div>
+    <div class="card-body">
+      <div class="result-grid">
+        <div class="result-box primary">
+          <div class="rb-label">Dosis</div>
+          <div class="rb-value" id="res-ugkgmin">–</div>
+          <div class="rb-unit">µg/kg/min</div>
+        </div>
+        <div class="result-box">
+          <div class="rb-label">Entspricht</div>
+          <div class="rb-value" id="res-mgh">–</div>
+          <div class="rb-unit">mg/h (Gegenkontrolle)</div>
+        </div>
+      </div>
+
+      <div class="sofa-band" id="sofa-band">
+        <div class="sofa-dot" id="sofa-dot"></div>
+        <div class="sofa-text" id="sofa-text">SOFA-Kreislauf-Score wird berechnet…</div>
+        <div class="sofa-score" id="sofa-score">–</div>
+      </div>
+
+      <div class="note" id="dose-note" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- RÜCKWÄRTSRECHNER -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Rückwärtsrechner</span>
+      <span class="card-sub">µg/kg/min → ml/h</span>
+    </div>
+    <div class="card-body">
+      <div class="input-grid" style="margin-bottom:0">
+        <div class="field">
+          <label>Zieldosis</label>
+          <input type="number" id="target-dose" placeholder="0.10" min="0" max="10" step="0.01" oninput="calcReverse()">
+          <div class="field-unit">µg/kg/min</div>
+        </div>
+        <div class="result-box" style="display:flex;flex-direction:column;justify-content:center">
+          <div class="rb-label">Benötigte Laufrate</div>
+          <div class="rb-value" id="res-rate-rev" style="font-size:24px">–</div>
+          <div class="rb-unit">ml/h</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REFERENZTABELLE -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Referenztabelle</span>
+      <span class="card-sub" id="ref-label">Laufrate → µg/kg/min</span>
+    </div>
+    <div class="card-body" style="padding:0 0 4px">
+      <table class="ref-table" id="ref-table">
+        <thead>
+          <tr>
+            <th>Laufrate (ml/h)</th>
+            <th>Dosis (µg/kg/min)</th>
+            <th>SOFA Kreislauf</th>
+          </tr>
+        </thead>
+        <tbody id="ref-body"></tbody>
+      </table>
+      <div style="padding:8px 14px;font-size:11px;color:var(--text3)">Aktuelle Laufrate ist hervorgehoben.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const DRUGS = [
+  { id:'nor', name:'Noradrenalin', short:'NAdr',
+    sofa: d => d < 0.1 ? {score:2,label:'SOFA Kreislauf 2',col:'yellow'} : d <= 0.1 ? {score:3,label:'SOFA Kreislauf 3',col:'orange'} : {score:4,label:'SOFA Kreislauf 4',col:'red2'},
+    sofaFn: d => {
+      if (d === 0) return {score:0,label:'Kein Vasopressor',col:'green'};
+      if (d <= 0.1) return {score:3,label:'SOFA Kreislauf 3',col:'orange'};
+      return {score:4,label:'SOFA Kreislauf 4',col:'red2'};
+    },
+    ranges: [
+      {max:0.05, label:'Niedrig-dosiert', col:'yellow'},
+      {max:0.1,  label:'Mittel-dosiert', col:'orange'},
+      {max:0.3,  label:'Hoch-dosiert', col:'red'},
+      {max:999,  label:'Sehr hoch — kritisch', col:'red2'}
+    ],
+    presets: [
+      {label:'1 mg / 50 ml', mg:1, vol:50},
+      {label:'5 mg / 50 ml', mg:5, vol:50},
+      {label:'10 mg / 50 ml', mg:10, vol:50},
+      {label:'25 mg / 50 ml', mg:25, vol:50}
+    ]
+  },
+  { id:'adr', name:'Adrenalin', short:'Adr',
+    sofaFn: d => {
+      if (d === 0) return {score:0,label:'Kein Vasopressor',col:'green'};
+      if (d <= 0.1) return {score:3,label:'SOFA Kreislauf 3',col:'orange'};
+      return {score:4,label:'SOFA Kreislauf 4',col:'red2'};
+    },
+    ranges: [
+      {max:0.05, label:'Niedrig-dosiert', col:'yellow'},
+      {max:0.1,  label:'Mittel-dosiert', col:'orange'},
+      {max:0.3,  label:'Hoch-dosiert', col:'red'},
+      {max:999,  label:'Sehr hoch — kritisch', col:'red2'}
+    ],
+    presets: [
+      {label:'1 mg / 50 ml', mg:1, vol:50},
+      {label:'5 mg / 50 ml', mg:5, vol:50}
+    ]
+  },
+  { id:'dop', name:'Dopamin', short:'Dopa',
+    sofaFn: d => {
+      if (d === 0) return {score:0,label:'Kein Vasopressor',col:'green'};
+      if (d <= 5)  return {score:2,label:'SOFA Kreislauf 2',col:'yellow'};
+      if (d <= 15) return {score:3,label:'SOFA Kreislauf 3',col:'orange'};
+      return {score:4,label:'SOFA Kreislauf 4',col:'red2'};
+    },
+    ranges: [
+      {max:5,   label:'Nierendosis (renaler Effekt fraglich)', col:'green'},
+      {max:10,  label:'Beta-dominant (inotrope Wirkung)', col:'yellow'},
+      {max:15,  label:'Alpha-dominant (vasopressorisch)', col:'orange'},
+      {max:999, label:'Sehr hoch — kritisch', col:'red2'}
+    ],
+    presets: [
+      {label:'200 mg / 50 ml', mg:200, vol:50},
+      {label:'250 mg / 50 ml', mg:250, vol:50}
+    ]
+  },
+  { id:'dob', name:'Dobutamin', short:'Dobu',
+    sofaFn: d => ({score:2,label:'SOFA Kreislauf 2 (beliebige Dosis)',col:'yellow'}),
+    ranges: [
+      {max:5,   label:'Niedrig-dosiert', col:'green'},
+      {max:10,  label:'Mittel-dosiert', col:'yellow'},
+      {max:20,  label:'Hoch-dosiert', col:'orange'},
+      {max:999, label:'Sehr hoch', col:'red'}
+    ],
+    presets: [
+      {label:'250 mg / 50 ml', mg:250, vol:50},
+      {label:'500 mg / 50 ml', mg:500, vol:50}
+    ]
+  }
+];
+
+const SOFA_COLORS = {
+  green:  { dot:'#3ecf8e', bg:'var(--green-bg)',  border:'var(--green)',  text:'var(--green)' },
+  yellow: { dot:'#f5c842', bg:'var(--yellow-bg)', border:'var(--yellow)', text:'var(--yellow)' },
+  orange: { dot:'#f5823a', bg:'var(--orange-bg)', border:'var(--orange)', text:'var(--orange)' },
+  red:    { dot:'#f25f5c', bg:'var(--red-bg)',     border:'var(--red)',    text:'var(--red)' },
+  red2:   { dot:'#ff4040', bg:'var(--red2-bg)',    border:'var(--red2)',   text:'#ff5555' }
+};
+
+let currentDrug = DRUGS[0];
+let presetActive = null;
+
+function buildDrugSelector() {
+  const el = document.getElementById('drug-area');
+  DRUGS.forEach(d => {
+    const btn = document.createElement('div');
+    btn.className = 'preset' + (d.id === currentDrug.id ? ' active' : '');
+    btn.textContent = d.name;
+    btn.id = 'drug-' + d.id;
+    btn.addEventListener('click', () => {
+      currentDrug = d;
+      document.querySelectorAll('#drug-area .preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      presetActive = null;
+      buildPresets();
+      calc();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function buildPresets() {
+  const el = document.getElementById('presets-area');
+  el.innerHTML = '';
+  currentDrug.presets.forEach((p, i) => {
+    const btn = document.createElement('div');
+    btn.className = 'preset' + (presetActive === i ? ' active' : '');
+    btn.textContent = p.label;
+    btn.addEventListener('click', () => {
+      presetActive = i;
+      document.getElementById('conc-mg').value = p.mg;
+      document.getElementById('conc-vol').value = p.vol;
+      document.querySelectorAll('#presets-area .preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      calc();
+    });
+    el.appendChild(btn);
+  });
+}
+
+function onConcChange() {
+  presetActive = null;
+  document.querySelectorAll('#presets-area .preset').forEach(b => b.classList.remove('active'));
+  calc();
+}
+
+function getInputs() {
+  const weight = parseFloat(document.getElementById('weight').value);
+  const rate   = parseFloat(document.getElementById('rate').value);
+  const mg     = parseFloat(document.getElementById('conc-mg').value);
+  const vol    = parseFloat(document.getElementById('conc-vol').value);
+  return { weight, rate, mg, vol };
+}
+
+function concMgPerMl(mg, vol) { return mg / vol; }
+
+function calc() {
+  const { weight, rate, mg, vol } = getInputs();
+  const valid = weight > 0 && rate >= 0 && mg > 0 && vol > 0;
+
+  if (!valid) {
+    document.getElementById('res-ugkgmin').textContent = '–';
+    document.getElementById('res-mgh').textContent = '–';
+    document.getElementById('res-conc-label').textContent = '–';
+    document.getElementById('sofa-text').textContent = 'Bitte alle Felder ausfüllen.';
+    document.getElementById('sofa-score').textContent = '–';
+    document.getElementById('dose-note').style.display = 'none';
+    buildRefTable();
+    return;
+  }
+
+  const mgPerMl  = concMgPerMl(mg, vol);
+  const mgPerH   = mgPerMl * rate;
+  const mgPerMin = mgPerH / 60;
+  const ugPerMin = mgPerMin * 1000;
+  const ugKgMin  = ugPerMin / weight;
+
+  document.getElementById('res-ugkgmin').textContent = ugKgMin.toFixed(3);
+  document.getElementById('res-mgh').textContent = mgPerH.toFixed(3);
+  document.getElementById('res-conc-label').textContent =
+    (mgPerMl * 1000).toFixed(1) + ' µg/ml · ' + mgPerMl.toFixed(4) + ' mg/ml';
+
+  // SOFA
+  const sofa = currentDrug.sofaFn(ugKgMin);
+  const sc = SOFA_COLORS[sofa.col] || SOFA_COLORS.green;
+  const band = document.getElementById('sofa-band');
+  band.style.background = sc.bg;
+  band.style.borderColor = sc.border;
+  document.getElementById('sofa-dot').style.background = sc.dot;
+  document.getElementById('sofa-text').style.color = sc.text;
+  document.getElementById('sofa-text').textContent = sofa.label;
+  document.getElementById('sofa-score').style.background = sc.bg;
+  document.getElementById('sofa-score').style.color = sc.text;
+  document.getElementById('sofa-score').textContent = 'Score ' + sofa.score;
+
+  // dose range note
+  const range = currentDrug.ranges.find(r => ugKgMin <= r.max);
+  if (range) {
+    const note = document.getElementById('dose-note');
+    note.textContent = currentDrug.name + ' · ' + range.label + ' (' + ugKgMin.toFixed(3) + ' µg/kg/min)';
+    note.style.display = 'block';
+    const nc = SOFA_COLORS[range.col];
+    note.style.background = nc.bg;
+    note.style.borderColor = nc.border;
+    note.style.color = nc.text;
+  }
+
+  calcReverse();
+  buildRefTable();
+}
+
+function calcReverse() {
+  const { weight, mg, vol } = getInputs();
+  const target = parseFloat(document.getElementById('target-dose').value);
+  const valid = weight > 0 && mg > 0 && vol > 0 && target >= 0;
+  if (!valid) { document.getElementById('res-rate-rev').textContent = '–'; return; }
+  const mgPerMl = concMgPerMl(mg, vol);
+  const rate = (target * weight * 60) / (mgPerMl * 1000);
+  document.getElementById('res-rate-rev').textContent = rate.toFixed(2);
+}
+
+function buildRefTable() {
+  const { weight, rate, mg, vol } = getInputs();
+  const body = document.getElementById('ref-body');
+  body.innerHTML = '';
+  const mgPerMl = (mg > 0 && vol > 0) ? concMgPerMl(mg, vol) : null;
+
+  const steps = [0.5,1,1.5,2,2.5,3,4,5,6,7,8,9,10,12,14,16,18,20,25,30,35,40,50];
+
+  document.getElementById('ref-label').textContent =
+    mgPerMl ? `Laufrate → µg/kg/min (${currentDrug.name}, ${(mgPerMl*1000).toFixed(1)} µg/ml, ${weight||'?'} kg)` : 'Laufrate → µg/kg/min';
+
+  steps.forEach(r => {
+    const tr = document.createElement('tr');
+    let doseStr = '–', sofaStr = '–', sofaCol = '';
+    if (mgPerMl && weight > 0) {
+      const d = (r * mgPerMl * 1000) / (weight * 60);
+      doseStr = d.toFixed(3);
+      const sofa = currentDrug.sofaFn(d);
+      sofaStr = sofa.score;
+      sofaCol = sofa.col;
+    }
+    const isActive = rate && Math.abs(r - rate) < 0.26;
+    tr.className = isActive ? 'highlight' : '';
+    tr.innerHTML = `<td class="dose-col">${r.toFixed(1)}</td>
+      <td class="dose-col">${doseStr}</td>
+      <td class="sofa-col" style="color:${sofaCol ? 'var(--c-' + sofaCol + ', var(--text2))' : 'var(--text3)'}">${sofaStr}</td>`;
+    // inline color for sofa col
+    const sofaColors = {green:'#3ecf8e',yellow:'#f5c842',orange:'#f5823a',red:'#f25f5c',red2:'#ff5050'};
+    if (sofaCol && sofaColors[sofaCol]) tr.lastChild.style.color = sofaColors[sofaCol];
+    body.appendChild(tr);
+  });
+}
+
+buildDrugSelector();
+buildPresets();
+buildRefTable();
+</script>
+</body>
+</html>
